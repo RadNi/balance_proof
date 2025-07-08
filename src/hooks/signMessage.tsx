@@ -37,10 +37,10 @@ export const useSignMessage = () => {
             if (valid) {
                 setIsVerified(true);
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.log('Error signing message:', e);
         }
-    }, [isVerified, address]);
+    }, [address]);
 
 
     return {

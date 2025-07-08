@@ -4,18 +4,26 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useSignMessage } from "@/hooks/signMessage";
 import { serverAction } from "@/actions/server-action";
-import { createUltraHonkBackend } from "@/actions/ultrahonk-action";
+import { UltraHonkBackend } from "@aztec/bb.js";
+import circuit from "../target/circuit.json";
+import { Buffer } from 'buffer';
+
+// Make Buffer available globally for the aztec library
+// Process is automatically provided by webpack ProvidePlugin
+if (typeof window !== 'undefined') {
+  window.Buffer = Buffer;
+}
 
 export default function Connect() {
   const { address, isConnected } = useAccount();
   const { signAndVerify, isVerified, reset } = useSignMessage();
 
-  const handleUltraHonkBackend = async () => {
-    const result = await createUltraHonkBackend();
-    if (result.success) {
-      console.log("Success:", result.message);
-    } else {
-      console.error("Error:", result.message, result.error);
+  const handleUltraHonkBackend = () => {
+    try {
+      const backend = new UltraHonkBackend(circuit.bytecode, {}, { recursive: true });
+      console.log("UltraHonkBackend created:", backend);
+    } catch (error) {
+      console.error("Error creating UltraHonkBackend:", error);
     }
   };
 
