@@ -18,15 +18,6 @@ export default function Connect() {
   const { address, isConnected } = useAccount();
   const { signAndVerify, isVerified, reset } = useSignMessage();
 
-  const handleUltraHonkBackend = () => {
-    try {
-      const backend = new UltraHonkBackend(circuit.bytecode, {}, { recursive: true });
-      console.log("UltraHonkBackend created:", backend);
-    } catch (error) {
-      console.error("Error creating UltraHonkBackend:", error);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center justify-center gap-5">
       <ConnectButton />
@@ -60,12 +51,12 @@ export default function Connect() {
             Server
           </button>
 
-          <button
+          {/* <button
             onClick={handleUltraHonkBackend}
             className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
           >
             UltraHonk Backend
-          </button>
+          </button> */}
 
         </div>
       )}
