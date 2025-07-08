@@ -4,10 +4,20 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useSignMessage } from "@/hooks/signMessage";
 import { serverAction } from "@/actions/server-action";
+import { createUltraHonkBackend } from "@/actions/ultrahonk-action";
 
 export default function Connect() {
   const { address, isConnected } = useAccount();
   const { signAndVerify, isVerified, reset } = useSignMessage();
+
+  const handleUltraHonkBackend = async () => {
+    const result = await createUltraHonkBackend();
+    if (result.success) {
+      console.log("Success:", result.message);
+    } else {
+      console.error("Error:", result.message, result.error);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center gap-5">
@@ -40,6 +50,13 @@ export default function Connect() {
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
           >
             Server
+          </button>
+
+          <button
+            onClick={handleUltraHonkBackend}
+            className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
+          >
+            UltraHonk Backend
           </button>
 
         </div>

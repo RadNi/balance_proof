@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aztec/bb.js": "^0.87.9",
     "@rainbow-me/rainbowkit": "^2.2.6",
     "@tanstack/react-query": "^5.69.0",
     "class-variance-authority": "^0.7.1",
