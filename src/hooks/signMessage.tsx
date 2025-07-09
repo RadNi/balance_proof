@@ -1,16 +1,12 @@
 import { useCallback, useState } from 'react';
-import { verifyMessage } from 'viem';
-import { useAccount } from 'wagmi';
-import { signMessage } from 'wagmi/actions';
-import { wagmiConfig } from '@/config/wagmi';
 import { Barretenberg, RawBuffer, UltraHonkBackend, deflattenFields } from "@aztec/bb.js";
 import mptBodyCircuit from "./target/inner_mpt_body.json";
 import mptBodyInitialCircuit from "./target/initial_mpt_body.json";
 import balanceCheckCircuit from "./target/leaf_check.json";
 import { Noir, type CompiledCircuit, type InputMap } from '@noir-lang/noir_js';
 import { encodeAccount, getInitialPublicInputs, getInitialPlaceHolderInput, getNodesFromProof, uint8ArrayToStringArray, hexStringToStringUint8Array } from "./utils";
-import { ethers, recoverAddress, SigningKey } from "ethers";
-import { initial_layer_vk, innner_layer_vk } from "./target/verification_keys";
+import { ethers } from "ethers";
+import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
 
 const SIGN_MESSAGE = 'Sign this message to verify your wallet';
@@ -224,7 +220,7 @@ async function me() {
       const output = await provider.send("eth_getProof", [address, [], "latest"])
       console.log(output)
       encoded = getNodesFromProof(output.accountProof)
-      const x = encodeAccount(output, address)
+      const x = encodeAccount(encoded.account, address)
       account = x.account
       trie_key = x.trie_key
       console.log(encoded.nodes_initial)
@@ -249,7 +245,7 @@ async function me() {
 
 
 export const useSignMessage = () => {
-    const { address } = useAccount();
+    const address = "BLANK";
     const [isVerified, setIsVerified] = useState(false);
 
     const reset = useCallback(() => {
