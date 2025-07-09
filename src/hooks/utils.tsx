@@ -68,6 +68,8 @@ function hexToBytesPadInverse(raw: string, length: number) {
 export function getNodesFromProof(proof: BytesLike[]) {
   const nodes_initial = []
   const nodes_inner = []
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  let account: any = {}
   const nodes_initial_length = 3
   const roots: string[][] = []
   console.log("proof:")
@@ -108,6 +110,7 @@ export function getNodesFromProof(proof: BytesLike[]) {
       console.log("leaf is here:")
       console.log(nodeRaw)
       node_type = "1"
+      account = RLP.decode(RLP.decode(nodeRaw)[1])
     }
 
     const node_ = {
@@ -121,37 +124,41 @@ export function getNodesFromProof(proof: BytesLike[]) {
     else if (node_type == "0")
       nodes_inner.push(node_)
   }
-  console.log("injaaaaaaa")
   console.log("nodes initial")
   console.log(nodes_initial)
   console.log("nodes_inner")
   console.log(nodes_inner)
   console.log("roots")
   console.log(roots)
-  return {nodes_initial, nodes_inner, roots}
+  return {nodes_initial, nodes_inner, roots, account}
 }
 
 
+/* eslint-disable @typescript-eslint/no-unsafe-return*/
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function encodeAccount(accountRaw: any, address: string) {
+function padArray(data: Array<any>, length: number) {
+  for (let index = data.length; index < length; index++) {
+    data.push(0)
+  }
+  return data
+}
 
-  /* eslint-disable @typescript-eslint/no-unsafe-argument */
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-  const balance_raw = hexToBytesPad(accountRaw.balance, 32)
-  const nonce_raw = hexToBytesPad(accountRaw.nonce, 8)
-
-  console.log("address")
-  console.log(address)
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function encodeAccount(accountRaw:  Uint8Array[], address: any) {
+  console.log("before")
+  console.log(accountRaw)
+  console.log(accountRaw[0])
+  const account = {
+    /* eslint-disable @typescript-eslint/no-unsafe-argument */
+    nonce: padArray(Array.from(accountRaw[0]!), 8),
+    balance: padArray(Array.from(accountRaw[1]!), 32),
+    nonce_length: accountRaw[0]!.length,
+    balance_length: accountRaw[1]!.length,
+    address: hexToBytesPadInverse(address, 20)
+  }
   const trie_key = hexToBytesPadInverse(ethers.keccak256(address), 32)
   console.log("trie key:")
   console.log(trie_key)
-  const account = {
-    balance: balance_raw[0],
-    balance_length: balance_raw[1]?.toString(),
-    nonce: nonce_raw[0],
-    nonce_length: nonce_raw[1]?.toString(),
-    address: hexToBytesPadInverse(address, 20)
-  }
   return {"account": account, "trie_key": trie_key}
 }
 
