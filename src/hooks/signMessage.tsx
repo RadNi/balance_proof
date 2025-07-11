@@ -9,9 +9,6 @@ import { ethers } from "ethers";
 import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
 
-const SIGN_MESSAGE = 'Sign this message to verify your wallet';
-
-
 const show = (content: string) => {
   console.log(content)
 };
@@ -94,10 +91,12 @@ async function you() {
 
     // initial layer
     const initial_nodes_length = nodes_initial.length
+    let new_index = 0
+    nodes_initial.map(e => new_index += e.prefix_addition as number)
     input = {
       nodes: nodes_initial,
-      node_length: "" + initial_nodes_length,
-      trie_key_new_index: "" + initial_nodes_length,
+      node_length: initial_nodes_length,
+      trie_key_new_index: new_index,
       root: root,
       trie_key: trie_key,
       new_root: new_roots[initial_nodes_length - 1],
@@ -123,21 +122,22 @@ async function you() {
     }
     
     for (let i = 0; i < nodes_inner.length; i++) {
+        new_index += nodes_inner[i]!.prefix_addition as number
         input = {
           nodes: [nodes_inner[i]],
-          node_length: "1",
-          trie_key_new_index: ""+(i + initial_nodes_length + 1),
+          node_length: 1,
+          trie_key_new_index: new_index,
           root: root,
           trie_key: trie_key,
           new_root: new_roots[i + initial_nodes_length],
           proof: recursiveProof.proof,
           public_inputs: recursiveProof.publicInputs,
           verification_key: innner_layer_vk,
-          is_first_inner_layer: "0"
+          is_first_inner_layer: 0
         } as InputMap
         if (i == 0) {
           // second layer
-          input.is_first_inner_layer = "1"
+          input.is_first_inner_layer = 1
           show("Generating recursive circuit witness... ⏳ " + i);
           console.log(input)
           const { witness } = await mptBodyCircuitNoir.execute(input)
@@ -148,8 +148,8 @@ async function you() {
           show("Intermediary proof verified: " + verified);
           recursiveProof = {proof: deflattenFields(proof), publicInputs}
         } else {
-          // inner of the layers
-          input.is_first_inner_layer = '0'
+          // rest of the layers
+          input.is_first_inner_layer = 0
           show("Generating recursive circuit witness... ⏳ " + i);
           console.log(input)
           const { witness } = await mptBodyCircuitNoir.execute(input)
