@@ -208,3 +208,22 @@ export function getInitialPublicInputs(trie_key: string[], _root: string[]) {
 export function getInitialPlaceHolderInput() {
   return innner_layer_vk
 }
+
+export function bigintToUint8Array(value: bigint): number[] {
+    let hex = value.toString(16);
+    if (hex.length % 2 == 1)
+      hex = "0" + hex
+    const len = Math.ceil(hex.length / 2);
+    const u8: number[] = new Array(len);
+    for (let i = 0; i < len; i++) {
+        u8[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return u8;
+}
+
+
+export function buf2Bigint(buffer: ArrayBuffer) { // buffer is an ArrayBuffer
+  return ethers.formatUnits("0x" + ([...new Uint8Array(buffer)]
+      .map(x => x.toString(16).padStart(2, '0'))
+      .join('')))
+}

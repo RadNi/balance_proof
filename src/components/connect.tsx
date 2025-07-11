@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
 
 export default function Connect() {
   const { address, isConnected } = useAccount();
-  const { signAndVerify, isVerified, reset } = useSignMessage();
+  const { signAndVerify, isVerified, reset, setBalanceTarget } = useSignMessage();
 
   return (
     <div className="flex flex-col items-center justify-center gap-5">
@@ -25,31 +25,29 @@ export default function Connect() {
 
       {isConnected && (
         <div className="flex flex-col items-center gap-3">
+
+
+
+          <input
+            onChange={(e) => setBalanceTarget(e.target.value)}
+              className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+          />
           <button
             onClick={signAndVerify}
-            disabled={isVerified}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isVerified ? "Message Signed ✓" : "Sign Message"}
+            Generate Proof
           </button>
 
 
-          {isVerified && (
-            <button
-              onClick={reset}
-              className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-            >
-              Reset
-            </button>
-          )}
 
 
-          <button
+          {/* <button
             onClick={() => serverAction()}
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
           >
             Server
-          </button>
+          </button> */}
 
           {/* <button
             onClick={handleUltraHonkBackend}
