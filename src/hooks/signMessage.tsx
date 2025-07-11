@@ -4,7 +4,7 @@ import mptBodyCircuit from "./target/inner_mpt_body.json";
 import mptBodyInitialCircuit from "./target/initial_mpt_body.json";
 import balanceCheckCircuit from "./target/leaf_check.json";
 import { Noir, type CompiledCircuit, type InputMap } from '@noir-lang/noir_js';
-import { encodeAccount, getInitialPublicInputs, getInitialPlaceHolderInput, getNodesFromProof, uint8ArrayToStringArray, hexStringToStringUint8Array } from "./utils";
+import { encodeAccount, getInitialPublicInputs, getInitialPlaceHolderInput, getNodesFromProof, uint8ArrayToStringArray, hexStringToStringUint8Array, bigintToUint8Array, buf2Bigint } from "./utils";
 import { ethers } from "ethers";
 import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
@@ -13,7 +13,8 @@ const show = (content: string) => {
   console.log(content)
 };
 
-
+let balance_target: number[] = []
+let balance_target_length: number
 
 let encoded
 let account: Record<string, unknown>
@@ -27,13 +28,23 @@ let pub_key_x: string[]
 let pub_key_y: string[]
 let signature : string[]
 
-
-
+export function setBalanceTargetMain(balanceTarget: string) {
+    console.log(balanceTarget)
+    const btb = BigInt(Number(balanceTarget) * 1000000000000000000)
+    console.log(btb)
+    balance_target = bigintToUint8Array(btb)
+    balance_target_length = balance_target.length
+    while (balance_target.length != 32)
+        balance_target.push(0)
+}
 
 
 async function sign_message(from: string) {
   if (window.ethereum) {
-    const msg = "We love cryptography!"
+    const msg = JSON.stringify({
+    message: "radni is here!",
+    balance_target: buf2Bigint((new Uint8Array(balance_target.slice(0, balance_target_length))).buffer).toString()
+  }, null, 2)
     /* eslint-disable @typescript-eslint/no-unsafe-call */
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     const signature_: PrefixedHexString = await window.ethereum!.request({
@@ -173,8 +184,8 @@ async function you() {
         root: root,
         leaf_hash_: new_roots[new_roots.length - 1],
         
-        balance_target: ["20", "85", "194", "64", "213", "170", "64", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
-        balance_target_length: "7",
+        balance_target,
+        balance_target_length,
         proof: recursiveProof.proof,
         trie_key_index: nodes_initial.length + nodes_inner.length + "",
         verification_key: innner_layer_vk,
@@ -193,8 +204,8 @@ async function you() {
     // Verify recursive proof
     show("Verifying final proof... ⏳");
     const verified = await balanceCheckBackend.verifyProof({ proof: finalProof.proof, publicInputs: finalProof.publicInputs }, {keccakZK: true});
+    console.log(finalProof.proof)
     show("Final proof verified: " + verified);
-    show(finalProof.proof.toString())
 }
 
 
@@ -247,12 +258,15 @@ async function me() {
 export const useSignMessage = () => {
     const address = "BLANK";
     const [isVerified, setIsVerified] = useState(false);
+    const [balanceTarget, setBalanceTarget] = useState("");
 
     const reset = useCallback(() => {
         setIsVerified(false);
     }, []);
 
     const signAndVerify = useCallback(async () => {
+        console.log("1", balanceTarget)
+        setBalanceTargetMain(balanceTarget)
         await me()
         await you()
 
@@ -273,13 +287,14 @@ export const useSignMessage = () => {
 
 
 
-    }, [isVerified, address]);
+    }, [isVerified, address, setBalanceTarget, balanceTarget]);
 
 
     return {
         signAndVerify,
         isVerified,
-        reset
+        reset,
+        setBalanceTarget
     };
 };
 
