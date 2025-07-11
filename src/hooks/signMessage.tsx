@@ -10,7 +10,7 @@ import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
 
 const show = (content: string) => {
-  console.log(content)
+  console.timeLog("prover", content)
 };
 
 let balance_target: number[] = []
@@ -29,9 +29,7 @@ let pub_key_y: string[]
 let signature : string[]
 
 export function setBalanceTargetMain(balanceTarget: string) {
-    console.log(balanceTarget)
     const btb = BigInt(Number(balanceTarget) * 1000000000000000000)
-    console.log(btb)
     balance_target = bigintToUint8Array(btb)
     balance_target_length = balance_target.length
     while (balance_target.length != 32)
@@ -114,7 +112,7 @@ async function you() {
       public_inputs: getInitialPublicInputs(trie_key, root!),
       placeholder: getInitialPlaceHolderInput()
     } as InputMap
-    show("Generating initial circuit witness... ⏳ ");
+    show("Generating initial proof witness... ⏳ ");
     console.log(input)
     const initial_witness = await mptBodyInitialCircuitNoir.execute(input)
     show("Generating initial proof... ⏳ ");
@@ -123,9 +121,6 @@ async function you() {
     const initial_verified = await mptBodyInitialBackend.verifyProof({ proof: initial_proof.proof, publicInputs: initial_proof.publicInputs });
     show("Initial proof verified: " + initial_verified);
     recursiveProof = {proof: deflattenFields(initial_proof.proof), publicInputs: initial_proof.publicInputs}
-
-    show("Generating inner circuit witness... ⏳");
-    console.log("new roots inja ", nodes_inner.length)
     
     for (let i = 0; i < nodes_inner.length; i++) {
         console.log(i + initial_nodes_length)
@@ -149,26 +144,26 @@ async function you() {
         if (i == 0) {
           // second layer
           input.is_first_inner_layer = 1
-          show("Generating recursive circuit witness... ⏳ " + i);
+          show("Generating witness for recursive proof #" + (i+1) + " ...⏳ ");
           console.log(input)
           const { witness } = await mptBodyCircuitNoir.execute(input)
-          show("Generating recursive proof... ⏳ " + i);
+          show("Generating recursive proof #" + (i+1) + " ...⏳ ");
           const {proof, publicInputs} = await mptBodyBackend.generateProof(witness);
-          show("Verifying intermediary proof... ⏳");
+          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ");
           const verified = await mptBodyBackend.verifyProof({ proof: proof, publicInputs: publicInputs });
           show("Intermediary proof verified: " + verified);
           recursiveProof = {proof: deflattenFields(proof), publicInputs}
         } else {
           // rest of the layers
           input.is_first_inner_layer = 0
-          show("Generating recursive circuit witness... ⏳ " + i);
+          show("Generating witness for recursive proof #" + (i+1) + " ...⏳ ");
           console.log(input)
           const { witness } = await mptBodyCircuitNoir.execute(input)
-          show("Generating recursive proof... ⏳ " + i);
+          show("Generating recursive proof #" + (i+1) + " ...⏳ ");
           const {proof, publicInputs} = await mptBodyBackend.generateProof(witness);
-          show("Verifying intermediary proof... ⏳");
           console.log(proof)
           console.log(publicInputs)
+          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ");
           const verified = await mptBodyBackend.verifyProof({ proof: proof, publicInputs: publicInputs });
           show("Intermediary proof verified: " + verified);
           recursiveProof = {proof: deflattenFields(proof), publicInputs}
@@ -197,7 +192,9 @@ async function you() {
         public_inputs: recursiveProof.publicInputs
     } as InputMap
     console.log(balanceCheckInput)
+    show("Generating witness for final proof ...⏳ ");
     const { witness } = await balanceCheckNoir.execute(balanceCheckInput)
+    show("Generating final proof ...⏳ ");
     const finalProof = await balanceCheckBackend.generateProof(witness, {keccakZK: true});
 
 
@@ -265,10 +262,11 @@ export const useSignMessage = () => {
     }, []);
 
     const signAndVerify = useCallback(async () => {
-        console.log("1", balanceTarget)
         setBalanceTargetMain(balanceTarget)
         await me()
+        console.time("prover")
         await you()
+        console.timeEnd("prover")
 
 
 
