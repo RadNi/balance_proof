@@ -11,15 +11,6 @@ export function hexToBytes(hex: string) {
     return bytes;
 }
 
-
-
-// export function uint8ArrayToBigInt(uint8Array) {
-//     let result = 0n;
-//     for (let i = 0; i < 32; i++) {
-//         result = (result << 8n) | BigInt(uint8Array[i]);
-//     }
-//     return result.toString();
-// }
 export function uint8ArrayToStringArray(uint8Array: Uint8Array) {
     return Array.from(uint8Array).map((s) => s.toString())
 }
@@ -46,16 +37,6 @@ export function zero_public_input() {
   return result
 }
 
-
-function hexToBytesPad(raw: string, length: number) {
-  const bytes = hexToBytes(raw.substring(2)).map(e => e+"")
-  const _length = bytes.length
-  for (let index = 0; index < length; index++)
-      if (index >= _length)
-          bytes.push("0")
-  return [bytes, _length]
-}
-
 function hexToBytesPadInverse(raw: string, length: number) {
   let bytes = hexToBytes(raw.substring(2)).map(e => e+"")
   const _length = bytes.length
@@ -79,24 +60,28 @@ export function getNodesFromProof(proof: BytesLike[]) {
     roots.push(hexToBytesPadInverse(ethers.keccak256(nodeRaw!), 32))
 
     const decoded = RLP.decode(nodeRaw)
-    let node_type: string
-    const rows: string[][] = []
-    const row_exist: string[] = []
+    let node_type: number
+    const rows: number[][] = []
+    const row_exist: number[] = []
+    let prefix_addition: number
     if (decoded.length == 17) {
       // branch
-      node_type = "0"
+      node_type = 0
+      prefix_addition = 1
       let row_count = 0
+      console.log("injaaaa")
+      console.log(decoded)
       decoded.forEach(row => {
         if (row instanceof Uint8Array) {
           if (row_count != 16) {
-            let row_: string[] = []
+            let row_: number[] = []
             if (row.length == 32) {
-                row.forEach(elem => {row_.push(elem + "")})
-                row_exist.push("1")
+                row_ = Array.from(row)
+                row_exist.push(1)
             } else {
                 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-                row_ = Array(32).fill("0")
-                row_exist.push("0")
+                row_ = Array(32).fill(0)
+                row_exist.push(0)
             }
             rows.push(row_)
           }
@@ -104,25 +89,61 @@ export function getNodesFromProof(proof: BytesLike[]) {
         }
       })
     } else if (decoded.length == 2 && index != proof.length - 1) {
-      alert("proof has a extension node!")
-      node_type = "2"
+      console.log("proof has a extension node!")
+      node_type = 1
+      if (decoded[0] instanceof Uint8Array && decoded[1] instanceof Uint8Array) {
+        const first_row: number[] = Array(32).fill(0)
+        /* eslint-disable @typescript-eslint/non-nullable-type-assertion-style*/
+        first_row[0] = ((decoded[0][0] as number) >> 4) & 0xF
+        first_row[1] = (decoded[0][0] as number) & 0xF
+        first_row[2] = decoded[0].length - 1
+        rows.push(first_row)
+
+        const second_row: number[] = Array(32).fill(0)
+        for (let index = 0; index < first_row[2]; index++) {
+          second_row[index] = decoded[0][index + 1] as number;
+        }
+        rows.push(second_row)
+
+        let third_row: number[] = []
+        decoded[1].map(e => third_row.push(e))
+        while (third_row.length != 32) {
+          third_row = [0].concat(third_row)
+        }
+        rows.push(third_row)
+
+        const zero: number[] = Array(32).fill(0)
+        for (let index = 0; index < 13; index++)
+          rows.push(zero)
+
+        for (let index = 0; index < 16; index++)
+          row_exist.push(0)
+
+        prefix_addition = first_row[2] * 2 + first_row[0]
+      } else {
+        throw Error("extension node has wrong format!")
+      }
     } else {
       console.log("leaf is here:")
       console.log(nodeRaw)
-      node_type = "1"
+      node_type = 2
       account = RLP.decode(RLP.decode(nodeRaw)[1])
+      prefix_addition = 0
     }
 
     const node_ = {
         "rows": rows,
         "row_exist": row_exist,
-        "node_type": node_type
+        "node_type": node_type,
+        "prefix_addition": prefix_addition
     }
 
-    if (index < nodes_initial_length)
-      nodes_initial.push(node_)
-    else if (node_type == "0")
-      nodes_inner.push(node_)
+    if (node_type != 2) {
+      if (index < nodes_initial_length)
+        nodes_initial.push(node_)
+      else
+        nodes_inner.push(node_)
+    }
   }
   console.log("nodes initial")
   console.log(nodes_initial)
