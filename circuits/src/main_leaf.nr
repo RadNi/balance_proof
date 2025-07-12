@@ -163,7 +163,7 @@ fn main(
     account: mpt_leaf::Account,
     root: [u8; 32], 
 
-    pub hashed_message : [u8;32], pub_key_x : [u8;32], pub_key_y : [u8;32], signature : [u8;64],
+    hashed_message : pub [u8;32], pub_key_x : [u8;32], pub_key_y : [u8;32], signature : [u8;64],
 
     balance_target: pub [u8; 32],
     balance_target_length: pub u8,
