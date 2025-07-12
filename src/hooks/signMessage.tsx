@@ -183,7 +183,7 @@ async function you() {
         balance_target_length,
         proof: recursiveProof.proof,
         trie_key_index: nodes_initial.length + nodes_inner.length + "",
-        verification_key: innner_layer_vk,
+        // verification_key: innner_layer_vk,
         hashed_message: hashed_message,
         // public_key: public_key,
         pub_key_x: pub_key_x,
