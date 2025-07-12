@@ -196,12 +196,12 @@ async function you() {
     const { witness } = await balanceCheckNoir.execute(balanceCheckInput)
     show("Generating final proof ...⏳ ");
     const finalProof = await balanceCheckBackend.generateProof(witness, {keccakZK: true});
-
+    show("Final proof:")
+    console.log(finalProof)
 
     // Verify recursive proof
     show("Verifying final proof... ⏳");
     const verified = await balanceCheckBackend.verifyProof({ proof: finalProof.proof, publicInputs: finalProof.publicInputs }, {keccakZK: true});
-    console.log(finalProof.proof)
     show("Final proof verified: " + verified);
 }
 
