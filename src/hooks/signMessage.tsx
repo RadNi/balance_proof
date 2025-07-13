@@ -4,10 +4,11 @@ import mptBodyCircuit from "./target/inner_mpt_body.json";
 import mptBodyInitialCircuit from "./target/initial_mpt_body.json";
 import balanceCheckCircuit from "./target/leaf_check.json";
 import { Noir, type CompiledCircuit, type InputMap } from '@noir-lang/noir_js';
-import { encodeAccount, getInitialPublicInputs, getInitialPlaceHolderInput, getNodesFromProof, uint8ArrayToStringArray, hexStringToStringUint8Array, bigintToUint8Array, buf2Bigint } from "./utils";
+import { getInitialPublicInputs, getInitialPlaceHolderInput, uint8ArrayToStringArray, hexStringToStringUint8Array, bigintToUint8Array, buf2Bigint } from "./utils";
 import { ethers } from "ethers";
 import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
+import { getNodesFromProof, type MPTProof, type Node } from "mpt-noirjs"
 
 const show = (content: string) => {
   console.timeLog("prover", content)
@@ -16,13 +17,13 @@ const show = (content: string) => {
 let balance_target: number[] = []
 let balance_target_length: number
 
-let encoded
-let account: Record<string, unknown>
-let trie_key: string[]
-let nodes_initial: Record<string, unknown>[]
-let nodes_inner: Record<string, unknown>[]
-let root: string[] | undefined
-let new_roots: string[][]
+// let account: Account
+// let trie_key: number[]
+let mpt_proof: MPTProof
+const nodes_initial: Node[] = []
+const nodes_inner: Node[] = []
+let root: number[]
+let new_roots: number[][]
 let hashed_message : string[]
 let pub_key_x: string[]
 let pub_key_y: string[]
@@ -101,15 +102,15 @@ async function you() {
     // initial layer
     const initial_nodes_length = nodes_initial.length
     let new_index = 0
-    nodes_initial.map(e => new_index += e.prefix_addition as number)
+    nodes_initial.map(e => new_index += e.prefix_addition)
     input = {
       nodes: nodes_initial,
       node_length: initial_nodes_length,
       trie_key_new_index: new_index,
       root: root,
-      trie_key: trie_key,
+      trie_key: mpt_proof.trie_account.trie_key,
       new_root: new_roots[initial_nodes_length - 1],
-      public_inputs: getInitialPublicInputs(trie_key, root!),
+      public_inputs: getInitialPublicInputs(mpt_proof.trie_account.trie_key, root!),
       placeholder: getInitialPlaceHolderInput()
     } as InputMap
     show("Generating initial proof witness... ⏳ ");
@@ -128,13 +129,13 @@ async function you() {
     }
     
     for (let i = 0; i < nodes_inner.length; i++) {
-        new_index += nodes_inner[i]!.prefix_addition as number
+        new_index += nodes_inner[i]!.prefix_addition
         input = {
           nodes: [nodes_inner[i]],
           node_length: 1,
           trie_key_new_index: new_index,
           root: root,
-          trie_key: trie_key,
+          trie_key: mpt_proof.trie_account.trie_key,
           new_root: new_roots[i + initial_nodes_length],
           proof: recursiveProof.proof,
           public_inputs: recursiveProof.publicInputs,
@@ -175,14 +176,14 @@ async function you() {
 
 
     const balanceCheckInput = {
-        account: account,
+        account: mpt_proof.trie_account.account,
         root: root,
         leaf_hash_: new_roots[new_roots.length - 1],
         
         balance_target,
         balance_target_length,
         proof: recursiveProof.proof,
-        trie_key_index: nodes_initial.length + nodes_inner.length + "",
+        trie_key_index: nodes_initial.length + nodes_inner.length,
         // verification_key: innner_layer_vk,
         hashed_message: hashed_message,
         // public_key: public_key,
@@ -227,18 +228,23 @@ async function me() {
       const address = from
       const output = await provider.send("eth_getProof", [address, [], "latest"])
       console.log(output)
-      encoded = getNodesFromProof(output.accountProof)
-      const x = encodeAccount(encoded.account, address)
-      account = x.account
-      trie_key = x.trie_key
-      console.log(encoded.nodes_initial)
-      nodes_initial = encoded.nodes_initial
-      nodes_inner = encoded.nodes_inner
-      root = encoded.roots[0]
-      new_roots = encoded.roots.slice(1)
+      mpt_proof = getNodesFromProof(output.accountProof, address)
+      // console.log(encoded.nodes_initial)
+      
+      for (let index = 0; index < mpt_proof.nodes.length; index++) {
+        const node = mpt_proof.nodes[index]!
+        if (index < 3)
+          nodes_initial.push(node)
+        else
+          nodes_inner.push(node)
+      }
+      // if (encoded.roots.length == 0)
+      //   throw Error("This should never happen!")
+      root = mpt_proof.roots[0]!
+      new_roots = mpt_proof.roots.slice(1)
       console.log(nodes_initial)
       console.log(nodes_inner)
-      console.log(account)
+      console.log(mpt_proof.trie_account.account)
       console.log(new_roots)
       console.log(root)
         
