@@ -10,9 +10,21 @@ import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
 import { getNodesFromProof, type MPTProof, type Node } from "mpt-noirjs"
 
-const show = (content: string) => {
+let setProofProgress = (_: number) => {console.log("empty")}
+let setPrgressReport = (_: string) => {console.log("empty")}
+let total_steps = 0;
+let current_step = 0;
+
+const show = (content: string, step = false) => {
   console.timeLog("prover", content)
+  setPrgressReport(content)
+  if (step) {
+    current_step ++
+    setProofProgress(current_step/total_steps)
+  }
+    
 };
+
 
 let balance_target: number[] = []
 let balance_target_length: number
@@ -82,11 +94,10 @@ async function sign_message(from: string) {
 
 
 
-async function you() {
-  
-    show("Generating inner circuit verification key... ⏳");
+async function generate_proof() {
+    show("Generating circuits verification keys... ⏳");
     const mptBodyInitialCircuitNoir = new Noir(mptBodyInitialCircuit as CompiledCircuit);
-    const mptBodyInitialBackend = new UltraHonkBackend(mptBodyInitialCircuit.bytecode);
+    const mptBodyInitialBackend = new UltraHonkBackend(mptBodyInitialCircuit.bytecode, { threads: 5 }, { recursive: true });
     // const mptBodyInitialCircuitVerificationKey = await mptBodyInitialBackend.getVerificationKey();
 
     const mptBodyCircuitNoir = new Noir(mptBodyCircuit as CompiledCircuit);
@@ -95,10 +106,19 @@ async function you() {
 
     const balanceCheckNoir = new Noir(balanceCheckCircuit as CompiledCircuit);
     const balanceCheckBackend = new UltraHonkBackend(balanceCheckCircuit.bytecode, { threads: 5 }, { recursive: true });
+
+
+    // const barretenbergAPI = await Barretenberg.new({ threads: 5 });
+    // const bodyInitialVkAsFields = (await barretenbergAPI.acirVkAsFieldsUltraHonk(new RawBuffer(mptBodyInitialCircuitVerificationKey))).map(field => field.toString());
+    // const bodyVkAsFields = (await barretenbergAPI.acirVkAsFieldsUltraHonk(new RawBuffer(mptBodyCircuitVerificationKey))).map(field => field.toString());
+    // console.log("initial layer vkAsFields:")
+    // console.log(bodyInitialVkAsFields)
+    // console.log("inner layers vkAsFields:")
+    // console.log(bodyVkAsFields)
     let recursiveProof;
     let input;
 
-
+    total_steps = (1 + nodes_inner.length + 1) * 2
     // initial layer
     const initial_nodes_length = nodes_initial.length
     let new_index = 0
@@ -118,9 +138,9 @@ async function you() {
     const initial_witness = await mptBodyInitialCircuitNoir.execute(input)
     show("Generating initial proof... ⏳ ");
     const initial_proof = await mptBodyInitialBackend.generateProof(initial_witness.witness);
-    show("Verifying initial proof... ⏳");
+    show("Verifying initial proof... ⏳", true);
     const initial_verified = await mptBodyInitialBackend.verifyProof({ proof: initial_proof.proof, publicInputs: initial_proof.publicInputs });
-    show("Initial proof verified: " + initial_verified);
+    show("Initial proof verified: " + initial_verified, true);
     recursiveProof = {proof: deflattenFields(initial_proof.proof), publicInputs: initial_proof.publicInputs}
     
     for (let i = 0; i < nodes_inner.length; i++) {
@@ -150,9 +170,9 @@ async function you() {
           const { witness } = await mptBodyCircuitNoir.execute(input)
           show("Generating recursive proof #" + (i+1) + " ...⏳ ");
           const {proof, publicInputs} = await mptBodyBackend.generateProof(witness);
-          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ");
+          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ", true);
           const verified = await mptBodyBackend.verifyProof({ proof: proof, publicInputs: publicInputs });
-          show("Intermediary proof verified: " + verified);
+          show("Intermediary proof verified: " + verified, true);
           recursiveProof = {proof: deflattenFields(proof), publicInputs}
         } else {
           // rest of the layers
@@ -160,13 +180,13 @@ async function you() {
           show("Generating witness for recursive proof #" + (i+1) + " ...⏳ ");
           console.log(input)
           const { witness } = await mptBodyCircuitNoir.execute(input)
-          show("Generating recursive proof #" + (i+1) + " ...⏳ ");
+          show("Generating intermediary proof #" + (i+1) + " ...⏳ ");
           const {proof, publicInputs} = await mptBodyBackend.generateProof(witness);
           console.log(proof)
           console.log(publicInputs)
-          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ");
+          show("Verifying intermediary proof #" + (i+1) + " ...⏳ ", true);
           const verified = await mptBodyBackend.verifyProof({ proof: proof, publicInputs: publicInputs });
-          show("Intermediary proof verified: " + verified);
+          show("Intermediary proof verified: " + verified, true);
           recursiveProof = {proof: deflattenFields(proof), publicInputs}
         }
     }
@@ -197,17 +217,17 @@ async function you() {
     const { witness } = await balanceCheckNoir.execute(balanceCheckInput)
     show("Generating final proof ...⏳ ");
     const finalProof = await balanceCheckBackend.generateProof(witness, {keccakZK: true});
-    show("Final proof:")
+    show("Final proof:", true)
     console.log(finalProof)
 
     // Verify recursive proof
     show("Verifying final proof... ⏳");
     const verified = await balanceCheckBackend.verifyProof({ proof: finalProof.proof, publicInputs: finalProof.publicInputs }, {keccakZK: true});
-    show("Final proof verified: " + verified);
+    show("Final proof verified: " + verified, true);
 }
 
 
-async function me() {
+async function initialize() {
   
 
 
@@ -262,16 +282,28 @@ export const useSignMessage = () => {
     const address = "BLANK";
     const [isVerified, setIsVerified] = useState(false);
     const [balanceTarget, setBalanceTarget] = useState("");
+    const [progressReport, _setProgressReport] = useState("");
+    const [generatingProof, setGeneratingProof] = useState(false)
+    const [proof_progress, _setProofProgress] = useState(0)
 
     const reset = useCallback(() => {
         setIsVerified(false);
     }, []);
 
+    setProofProgress = useCallback((value: number) => {
+      _setProofProgress(value)
+    }, [])
+
+    setPrgressReport = useCallback((value: string) => {
+      _setProgressReport(value)
+    }, [])
+
     const signAndVerify = useCallback(async () => {
         setBalanceTargetMain(balanceTarget)
-        await me()
+        await initialize()
         console.time("prover")
-        await you()
+        setGeneratingProof(true)
+        await generate_proof()
         console.timeEnd("prover")
 
 
@@ -291,14 +323,17 @@ export const useSignMessage = () => {
 
 
 
-    }, [isVerified, address, setBalanceTarget, balanceTarget]);
+    }, [isVerified, address, setBalanceTarget, balanceTarget, setProofProgress]);
 
 
     return {
         signAndVerify,
         isVerified,
         reset,
-        setBalanceTarget
+        setBalanceTarget,
+        generatingProof,
+        proof_progress,
+        progressReport
     };
 };
 

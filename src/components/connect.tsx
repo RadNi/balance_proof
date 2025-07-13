@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
 
 export default function Connect() {
   const { address, isConnected } = useAccount();
-  const { signAndVerify, isVerified, reset, setBalanceTarget } = useSignMessage();
+  const { signAndVerify, isVerified, reset, setBalanceTarget, generatingProof, proof_progress, progressReport } = useSignMessage();
 
   return (
     <div className="flex flex-col items-center justify-center gap-5">
@@ -27,20 +27,32 @@ export default function Connect() {
         <div className="flex flex-col items-center gap-3">
 
 
+          {!generatingProof && (
 
           <input
             onChange={(e) => setBalanceTarget(e.target.value)}
               className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
           />
+          )}
+
+          {!generatingProof && (
           <button
             onClick={signAndVerify}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Generate Proof
           </button>
+          )}
 
+          {generatingProof && (
+          <progress value={proof_progress}/>
+          )}
 
-
+          {generatingProof && (
+        <span className="text-center" style={{ color: 'grey' }}>
+          {progressReport}
+        </span>
+          )}
 
           {/* <button
             onClick={() => serverAction()}
