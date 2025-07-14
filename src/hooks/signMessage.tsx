@@ -9,6 +9,9 @@ import { ethers } from "ethers";
 import { innner_layer_vk } from "./target/verification_keys";
 import { calculateSigRecovery, ecrecover, fromRPCSig, hashPersonalMessage, pubToAddress, type PrefixedHexString } from "@ethereumjs/util";
 import { getNodesFromProof, type MPTProof, type Node } from "mpt-noirjs"
+import { getProof, getAccount, signMessage } from '@wagmi/core'
+import { wagmiConfig } from '@/config/wagmi';
+
 
 let setProofProgress = (_: number) => {console.log("empty")}
 let setPrgressReport = (_: string) => {console.log("empty")}
@@ -50,7 +53,7 @@ export function setBalanceTargetMain(balanceTarget: string) {
 }
 
 
-async function sign_message(from: string) {
+async function sign_message(from: `0x${string}`) {
   if (window.ethereum) {
     const msg = JSON.stringify({
     message: "radni is here!",
@@ -58,10 +61,14 @@ async function sign_message(from: string) {
   }, null, 2)
     /* eslint-disable @typescript-eslint/no-unsafe-call */
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-    const signature_: PrefixedHexString = await window.ethereum!.request({
-        method: "personal_sign",
-        params: [msg, from],
-    }) as PrefixedHexString
+    const signature_: PrefixedHexString = await signMessage(wagmiConfig, {
+      account: from,
+      message: msg
+    })
+    // await window.ethereum!.request({
+    //     method: "personal_sign",
+    //     params: [msg, from],
+    // }) as PrefixedHexString
     const msgBuf = Buffer.from(msg)
     const {r, s, v} = fromRPCSig(signature_)
     const hashed_message_ = hashPersonalMessage(msgBuf)
@@ -226,27 +233,28 @@ async function generate_proof() {
     show("Final proof verified: " + verified, true);
 }
 
-
 async function initialize() {
-  
-
-
     show("Connecting to metamask... ⏳");
 
 
-    if (window.ethereum) {
+    // if (window.ethereum) {
       /* eslint-disable @typescript-eslint/no-unsafe-argument */
-      const mmProvider = new ethers.BrowserProvider(window.ethereum)
+      // const mmProvider = new ethers.BrowserProvider(window.ethereum)
       
       /* eslint-disable @typescript-eslint/no-unsafe-argument */
       /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-      const from = (await mmProvider.send("eth_requestAccounts", []))[0]
-      console.log(from)
-      await sign_message(from)
+      const address = getAccount(wagmiConfig).address!
+      console.log(address)
+      await sign_message(address)
 
-      const provider = new ethers.JsonRpcProvider("https://docs-demo.quiknode.pro/")
-      const address = from
-      const output = await provider.send("eth_getProof", [address, [], "latest"])
+      // const provider = new ethers.JsonRpcProvider("https://docs-demo.quiknode.pro/")
+      const output = await getProof(wagmiConfig, {
+        address: address,
+        blockTag: 'latest', 
+        storageKeys: [],
+      })
+      // const output = await provider.send("eth_getProof", [address, [], "latest"])
+      // const output = publicClient.getProof([address, [], "latest"])
       console.log(output)
       mpt_proof = getNodesFromProof(output.accountProof, address)
       // console.log(encoded.nodes_initial)
@@ -272,9 +280,9 @@ async function initialize() {
     
     //  from = await provider.send("eth_requestAccounts", [])  // hardhat wallet 0
     //  console.log(from)
-   } else {
-        console.log("sag")
-    }
+  //  } else {
+        // console.log("sag")
+    // }
 }
 
 
@@ -305,24 +313,6 @@ export const useSignMessage = () => {
         setGeneratingProof(true)
         await generate_proof()
         console.timeEnd("prover")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }, [isVerified, address, setBalanceTarget, balanceTarget, setProofProgress]);
 
 

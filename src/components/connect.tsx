@@ -3,9 +3,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useSignMessage } from "@/hooks/signMessage";
-import { serverAction } from "@/actions/server-action";
-import { UltraHonkBackend } from "@aztec/bb.js";
-import circuit from "../target/circuit.json";
 import { Buffer } from 'buffer';
 
 // Make Buffer available globally for the aztec library
@@ -17,6 +14,7 @@ if (typeof window !== 'undefined') {
 export default function Connect() {
   const { address, isConnected } = useAccount();
   const { signAndVerify, isVerified, reset, setBalanceTarget, generatingProof, proof_progress, progressReport } = useSignMessage();
+console.log()
 
   return (
     <div className="flex flex-col items-center justify-center gap-5">
